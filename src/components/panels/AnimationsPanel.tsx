@@ -31,12 +31,12 @@ export const AnimationsPanel = observer(() => {
 
   return (
     <>
-      <div className="text-sm px-[16px] pt-[16px] pb-[8px] font-semibold">
+      <div className="text-md text-white px-[16px] pt-[16px] pb-[8px] font-semibold">
         Animations
       </div>
       {selectedElement && !hasFadeInAnimation ? (
         <div
-          className="text-sm px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-white cursor-pointer"
+          className="text-sm text-white px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-[#00a0f5] cursor-pointer"
           onClick={() => {
             store.addAnimation({
               id: getUid(),
@@ -52,7 +52,7 @@ export const AnimationsPanel = observer(() => {
       ) : null}
       {selectedElement && !hasFadeOutAnimation ? (
         <div
-          className="text-sm px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-white cursor-pointer"
+          className="text-sm text-white px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-[#00a0f5] cursor-pointer"
           onClick={() => {
             store.addAnimation({
               id: getUid(),
@@ -68,7 +68,7 @@ export const AnimationsPanel = observer(() => {
       ) : null}
       {selectedElement && !hasSlideInAnimation ? (
         <div
-          className="text-sm px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-white cursor-pointer"
+          className="text-sm text-white px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-[#00a0f5] cursor-pointer"
           onClick={() => {
             store.addAnimation({
               id: getUid(),
@@ -88,7 +88,7 @@ export const AnimationsPanel = observer(() => {
       ) : null}
       {selectedElement && !hasSlideOutAnimation ? (
         <div
-          className="text-sm px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-white cursor-pointer"
+          className="text-sm text-white px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-[#00a0f5] cursor-pointer"
           onClick={() => {
             store.addAnimation({
               id: getUid(),
@@ -108,7 +108,7 @@ export const AnimationsPanel = observer(() => {
       ) : null}
       {selectedElement && !hasConsantAnimation ? (
         <div
-          className="text-sm px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-white cursor-pointer"
+          className="text-sm text-white px-[16px] py-[8px] font-semibold hover:bg-slate-700 hover:text-[#00a0f5] cursor-pointer"
           onClick={() => {
             store.addAnimation({
               id: getUid(),

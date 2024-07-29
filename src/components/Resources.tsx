@@ -9,6 +9,7 @@ import { FillPanel } from "./panels/FillPanel";
 import { ImageResourcesPanel } from "./panels/ImageResourcesPanel";
 import { TextResourcesPanel } from "./panels/TextResourcesPanel";
 import { VideoResourcesPanel } from "./panels/VideoResourcesPanel";
+import { AspectRatioPanel } from "./panels/AspectRatioPanel";
 import { EffectsPanel } from "./panels/EffectsPanel";
 
 export const Resources = observer(() => {
@@ -24,6 +25,7 @@ export const Resources = observer(() => {
       {selectedMenuOption === "Effect" ? <EffectsPanel /> : null}
       {selectedMenuOption === "Export" ? <ExportVideoPanel /> : null}
       {selectedMenuOption === "Fill" ? <FillPanel /> : null}
+      {selectedMenuOption === "AspectRatio" ? <AspectRatioPanel /> : null} {/* Add this line */} 
     </>
   );
 });

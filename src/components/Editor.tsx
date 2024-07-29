@@ -15,9 +15,9 @@ export const Editor = observer(() => {
 
   useEffect(() => {
     const canvas = new fabric.Canvas("canvas", {
-      height: 500,
-      width: 800,
-      backgroundColor: "#ededed",
+      height: 397.202,
+      width: 223.433,
+      backgroundColor: "#000000",
     });
     fabric.Object.prototype.transparentCorners = false;
     fabric.Object.prototype.cornerColor = "#00a0f5";
@@ -39,20 +39,22 @@ export const Editor = observer(() => {
   }, []);
   return (
     <div className="grid grid-rows-[20px_500px_1fr] grid-cols-[60px_200px_800px_1fr] h-[100%]">
-      <div className="col-span-4 bg-slate-300 text-right px-2 text-xs">
-        Created By Amit Digga
+      <div className="col-span-4 bg-white text-right px-2 text-xs">
+      
       </div>
-      <div className="tile row-span-2 flex flex-col">
+      <div className="tile bg-black row-span-2 flex flex-col">
         <Menu />
       </div>
-      <div className="row-span-2 flex flex-col overflow-auto">
+      <div className="bg-[#0e0e11] row-span-2 flex flex-col overflow-auto">
         <Resources />
       </div>
-      <canvas id="canvas" className="h-[500px] w-[800px] row col-start-3" />
-      <div className="col-start-4 row-start-2">
+      <div className="flex bg-[#eff3f5] items-center justify-center">
+        <canvas id="canvas" className="h-[500px] w-[800px] m-auto" />
+      </div>
+      <div className="bg-white col-start-4 row-start-2">
         <ElementsPanel />
       </div>
-      <div className="col-start-3 row-start-3 col-span-2 relative overflow-scroll px-[10px] py-[4px]">
+      <div className="bg-white col-start-3 row-start-3 col-span-2 relative overflow-scroll px-[10px] py-[4px]">
         <TimeLine />
       </div>
     </div>

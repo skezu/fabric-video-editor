@@ -11,6 +11,7 @@ import {
   MdAudiotrack,
   MdOutlineFormatColorFill,
   MdMovieFilter,
+  MdAspectRatio, // Import an icon for aspect ratio
 } from "react-icons/md";
 import { Store } from "@/store/Store";
 
@@ -24,13 +25,13 @@ export const Menu = observer(() => {
           <button
             key={option.name}
             onClick={() => option.action(store)}
-            className="py-4 px-2 w-full flex flex-col items-center text-xs"
+            className="py-4 px-2 w-full flex flex-col items-center text-xs text-white"
           >
             <option.icon
               className=""
               size="20"
               color={
-                store.selectedMenuOption === option.name ? "#00a0f5" : "black"
+                store.selectedMenuOption === option.name ? "#00a0f5" : "white"
               }
             />
             <div
@@ -90,6 +91,13 @@ const MENU_OPTIONS = [
     icon: MdMovieFilter,
     action: (store: Store) => {
       store.setSelectedMenuOption("Effect");
+    },
+  },
+  {
+    name: "AspectRatio", // Add the new menu option
+    icon: MdAspectRatio, 
+    action: (store: Store) => {
+      store.setSelectedMenuOption("AspectRatio"); 
     },
   },
   {

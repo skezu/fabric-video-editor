@@ -4,6 +4,7 @@ import { getUid, isHtmlAudioElement, isHtmlImageElement, isHtmlVideoElement } fr
 import anime, { get } from 'animejs';
 import { MenuOption, EditorElement, Animation, TimeFrame, VideoEditorElement, AudioEditorElement, Placement, ImageEditorElement, Effect, TextEditorElement } from '../types';
 import { FabricUitls } from '@/utils/fabric-utils';
+import { log } from 'console';
 
 export class Store {
   canvas: fabric.Canvas | null
@@ -24,6 +25,7 @@ export class Store {
 
   currentKeyFrame: number;
   fps: number;
+  canvasInitialized: boolean;
 
   constructor() {
     this.canvas = null;
@@ -37,6 +39,7 @@ export class Store {
     this.currentKeyFrame = 0;
     this.selectedElement = null;
     this.fps = 60;
+    this.canvasInitialized = false;
     this.animations = [];
     this.animationTimeLine = anime.timeline();
     this.selectedMenuOption = 'Video';
@@ -59,6 +62,7 @@ export class Store {
     this.canvas = canvas;
     if (canvas) {
       canvas.backgroundColor = this.backgroundColor;
+      this.canvasInitialized = true; // Set the flag to true when canvas is ready
     }
   }
 
@@ -386,6 +390,33 @@ export class Store {
         e.fabricObject.visible = isInside;
       }
     )
+    this.updateMediaElements(); // Update both audio and video
+  }
+
+  updateMediaElements() {
+    this.editorElements.forEach((element) => {
+      if (element.type === "video" || element.type === "audio") {
+        const media = document.getElementById(element.properties.elementId);
+
+        if ((isHtmlVideoElement(media) || isHtmlAudioElement(media)) && media) {
+          const mediaTime = (this.currentTimeInMs - element.timeFrame.start) / 1000;
+          const isInside = element.timeFrame.start <= this.currentTimeInMs && this.currentTimeInMs <= element.timeFrame.end; // Use isInside
+
+          // Determine if we should START playing
+          if (this.playing && isInside && media.paused) { 
+            media.currentTime = mediaTime;
+            media.play();
+          } 
+          // Determine if we should PAUSE 
+          else if (!isInside || !this.playing) {  // Pause if not inside or not playing
+            media.pause();
+            if (!isInside && media.currentTime !== 0) { 
+              media.currentTime = 0; // Reset if outside and not at the start
+            }
+          }
+        }
+      }
+    });
   }
 
   handleSeek(seek: number) {
@@ -404,6 +435,8 @@ export class Store {
     }
     const videoDurationMs = videoElement.duration * 1000;
     const aspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+    const canvasWidth = this.canvas?.getWidth() ?? 0;
+    const canvasHeight = canvasWidth / aspectRatio;
     const id = getUid();
     this.addEditorElement(
       {
@@ -413,8 +446,8 @@ export class Store {
         placement: {
           x: 0,
           y: 0,
-          width: 100 * aspectRatio,
-          height: 100,
+          width: canvasWidth,
+          height: canvasHeight,
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
@@ -539,23 +572,46 @@ export class Store {
   }
 
   updateVideoElements() {
-    this.editorElements.filter(
-      (element): element is VideoEditorElement =>
-        element.type === "video"
-    )
-      .forEach((element) => {
-        const video = document.getElementById(element.properties.elementId);
+    this.editorElements.forEach((element) => {
+      if (element.type === "video") {
+        const video = document.getElementById(element.properties.elementId) as HTMLVideoElement;
         if (isHtmlVideoElement(video)) {
-          const videoTime = (this.currentTimeInMs - element.timeFrame.start) / 1000;
-          video.currentTime = videoTime;
-          if (this.playing) {
-            video.play();
-          } else {
+          // Correct videoTime calculation (ensure it's never negative)
+          const videoTime = Math.max(0, (this.currentTimeInMs - element.timeFrame.start) / 1000); 
+
+          const isInside = element.timeFrame.start <= this.currentTimeInMs && this.currentTimeInMs <= element.timeFrame.end;
+
+          console.log("name : ", element.name);
+          console.log("videoTime", videoTime);
+          console.log("element.timeFrame.start", element.timeFrame.start / 1000);
+          console.log("element.timeFrame.end", element.timeFrame.end / 1000);
+          console.log("this.currentTimeInMs", this.currentTimeInMs / 1000);
+
+          // Determine the desired state based on the current time and play status
+          if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+            video.currentTime = videoTime + (element.timeFrame.start / 1000);
+          }
+          else {
+            // If metadata is not loaded, wait for the loadedmetadata event
+            video.addEventListener('loadedmetadata', () => {
+              video.currentTime = videoTime;
+              video.play();
+            }, { once: true }); // Use { once: true } to execute the listener only once
+          }
+          if (this.playing && isInside) {
+            // If the video should be playing and is not already playing, set the currentTime and play
+            if (video.paused) {
+              video.play();
+            }
+          } else if (!video.paused) {
+            // If the video should not be playing but is currently playing, pause it
             video.pause();
           }
         }
-      })
+      }
+    });
   }
+  
   updateAudioElements() {
     this.editorElements.filter(
       (element): element is AudioEditorElement =>
@@ -566,7 +622,7 @@ export class Store {
         if (isHtmlAudioElement(audio)) {
           const audioTime = (this.currentTimeInMs - element.timeFrame.start) / 1000;
           audio.currentTime = audioTime;
-          if (this.playing) {
+          if (this.playing && audioTime >= 0 && audioTime <= audio.duration) {
             audio.play();
           } else {
             audio.pause();
@@ -604,7 +660,7 @@ export class Store {
 
   saveCanvasToVideoWithAUdio() {
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    const stream = canvas.captureStream(30);
+    const stream = canvas.captureStream(60);
     const audioElements = this.editorElements.filter(isEditorAudioElement)
     const audioStreams: MediaStream[] = [];
     audioElements.forEach((audio) => {
@@ -621,8 +677,8 @@ export class Store {
     })
     const video = document.createElement("video");
     video.srcObject = stream;
-    video.height = 500;
-    video.width = 800;
+    video.height = 1920;
+    video.width = 1080;
     // video.controls = true;
     // document.body.appendChild(video);
     video.play().then(() => {
@@ -633,11 +689,11 @@ export class Store {
         console.log("data available");
       };
       mediaRecorder.onstop = function (e) {
-        const blob = new Blob(chunks, { type: "video/webm" });
+        const blob = new Blob(chunks, { type: "video/mp4" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "video.webm";
+        a.download = "video.mp4";
         a.click();
       };
       mediaRecorder.start();
@@ -854,8 +910,113 @@ export class Store {
     }
     this.refreshAnimations();
     this.updateTimeTo(this.currentTimeInMs);
-    store.canvas.renderAll();
+    if (this.canvasInitialized && this.canvas) {
+      store.canvas.renderAll();
+    }
   }
+
+  // Split
+  splitElement(id: string, splitTime: number) {
+    const elementIndex = this.editorElements.findIndex(
+      (element) => element.id === id
+    );
+
+    if (elementIndex === -1) {
+      return; 
+    }
+
+    const originalElement = this.editorElements[elementIndex];
+
+    // Adjust the original element's end time
+    this.editorElements[elementIndex] = {
+      ...originalElement,
+      timeFrame: {
+        ...originalElement.timeFrame,
+        end: splitTime,
+      },
+    };
+
+    // Create the new split element using addEditorElement 
+    // based on the original element's type
+    switch (originalElement.type) {
+      case 'video': 
+        this.addVideoFromElement(originalElement, splitTime);
+        break;
+      case 'audio':
+        this.addAudioFromElement(originalElement, splitTime);
+        break;
+      case 'image':
+        this.addImageFromElement(originalElement, splitTime);
+        break;
+      case 'text': 
+        this.addTextFromElement(originalElement, splitTime); 
+        break; 
+      default:
+        console.warn(`Split not implemented for type: ${originalElement.type}`);
+    } 
+  }
+
+  // Helper functions to create new elements based on type and splitTime
+  addVideoFromElement(originalElement: VideoEditorElement, splitTime: number) {
+    const id = getUid();
+    this.addEditorElement({
+      id,
+      name: `Media(video) (split)`, // You can improve the naming 
+      type: "video",
+      placement: { ...originalElement.placement },
+      timeFrame: {
+        start: splitTime,
+        end: originalElement.timeFrame.end, 
+      },
+      properties: { ...originalElement.properties, elementId: `video-${id}` },
+    });
+  }
+
+  addAudioFromElement(originalElement: AudioEditorElement, splitTime: number) {
+    const id = getUid();
+    this.addEditorElement({
+      id,
+      name: `Media(audio) (split)`, // You can improve the naming
+      type: "audio",
+      placement: { ...originalElement.placement },
+      timeFrame: {
+        start: splitTime,
+        end: originalElement.timeFrame.end,
+      },
+      properties: { ...originalElement.properties, elementId: `audio-${id}` },
+    });
+  }
+
+  addImageFromElement(originalElement: ImageEditorElement, splitTime: number) {
+    const id = getUid();
+    this.addEditorElement({
+      id,
+      name: `Media(image) (split)`, // You can improve the naming
+      type: "image",
+      placement: { ...originalElement.placement },
+      timeFrame: {
+        start: splitTime,
+        end: originalElement.timeFrame.end,
+      },
+      properties: { ...originalElement.properties, elementId: `image-${id}` },
+    });
+  }
+
+  addTextFromElement(originalElement: TextEditorElement, splitTime: number) {
+    const id = getUid();
+    this.addEditorElement({
+      id,
+      name: `Text (split)`, // You can improve the naming
+      type: "text",
+      placement: { ...originalElement.placement },
+      timeFrame: {
+        start: splitTime,
+        end: originalElement.timeFrame.end,
+      },
+      properties: { ...originalElement.properties }, // Text properties are likely the same
+    });
+  }
+
 
 }
 

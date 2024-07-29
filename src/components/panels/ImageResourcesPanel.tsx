@@ -14,7 +14,7 @@ export const ImageResourcesPanel = observer(() => {
   };
   return (
     <>
-      <div className="text-sm px-[16px] pt-[16px] pb-[8px] font-semibold">
+      <div className="text-sm text-white px-[16px] pt-[16px] pb-[8px] font-semibold">
         Add Image
       </div>
       {store.images.map((image, index) => {

@@ -8,13 +8,13 @@ export const ExportVideoPanel = observer(() => {
 
   return (
     <>
-      <div className="text-sm px-[16px] pt-[16px] pb-[8px] font-semibold">
+      <div className="text-sm text-white px-[16px] pt-[16px] pb-[8px] font-semibold">
         Export
       </div>
       {/* Set max time from number input */}
       <div className="px-[16px]">
         <div className="flex flex-row items-center my-2">
-          <div className="text-xs font-semibold mr-2">Video Length:</div>
+          <div className="text-xs text-white font-semibold mr-2">Video Length:</div>
           <input
             type="number"
             className="rounded text-center border-slate-200 placeholder-slate-400 contrast-more:border-slate-400 contrast-more:placeholder-slate-500 max-w-[50px] mr-2"
@@ -24,11 +24,11 @@ export const ExportVideoPanel = observer(() => {
               store.setMaxTime(Number(value) * 1000);
             }}
           />
-          <div>secs</div>
+          <div className="text-xs text-white">secs</div>
         </div>
         <div className="flex flex-row items-center my-2">
-          <div className="text-xs font-semibold mr-2">Canvas Resolution:</div>
-          <div className="text-xs mr-2">Todo</div>
+          <div className="text-xs text-white font-semibold mr-2">Canvas Resolution:</div>
+          <div className="text-xs text-white mr-2">Todo</div>
         </div>
       </div>
 

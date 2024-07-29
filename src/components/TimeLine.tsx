@@ -7,6 +7,11 @@ import { TimeFrameView } from "./timeline-related/TimeFrameView";
 
 export const TimeLine = observer(() => {
   const store = React.useContext(StoreContext);
+  const handleSplit = () => {
+    if (store.selectedElement) {
+      store.splitElement(store.selectedElement.id, store.currentTimeInMs);
+    }
+  };
   const percentOfCurrentTime = (store.currentTimeInMs / store.maxTime) * 100;
   return (
     <>
@@ -17,7 +22,12 @@ export const TimeLine = observer(() => {
           style={{
             left: `${percentOfCurrentTime}%`,
           }}
-        ></div>
+        >
+          <button onClick={handleSplit} disabled={!store.selectedElement}>
+            Split Element
+          </button>
+
+        </div>
         {store.editorElements.map((element) => {
           return <TimeFrameView key={element.id} element={element} />;
         })}

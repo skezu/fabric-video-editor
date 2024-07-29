@@ -8,7 +8,7 @@ import DragableView from "./DragableView";
 export const TimeFrameView = observer((props: { element: EditorElement }) => {
   const store = React.useContext(StoreContext);
   const { element } = props;
-  const disabled = element.type === "audio";
+  const disabled = false; // element.type === "audio";
   const isSelected = store.selectedElement?.id === element.id;
   const bgColorOnSelected = isSelected ? "bg-slate-800" : "bg-slate-600";
   const disabledCursor = disabled ? "cursor-no-drop" : "cursor-ew-resize";
@@ -19,7 +19,7 @@ export const TimeFrameView = observer((props: { element: EditorElement }) => {
         store.setSelectedElement(element);
       }}
       key={element.id}
-      className={`relative width-full h-[25px] my-2 ${
+      className={`relative width-full ${element.type=="video" ? "h-[51px]" : "h-[26px]"} my-2 ${
         isSelected ? "border-2 border-indigo-600 bg-slate-200" : ""
       }`}
     >
@@ -49,6 +49,7 @@ export const TimeFrameView = observer((props: { element: EditorElement }) => {
               store.maxTime) *
             100
           }%`,
+          height: `${element.type=="video" ? "50px" : "25px"}`,
         }}
         total={store.maxTime}
         onChange={(value) => {

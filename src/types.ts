@@ -11,7 +11,7 @@ export type EditorElementBase<T extends string, P> = {
 };
 export type VideoEditorElement = EditorElementBase<
   "video",
-  { src: string; elementId: string; imageObject?: fabric.Image, effect: Effect }
+  { src: string; elementId: string; imageObject?: fabric.Image, effect: Effect}
 >;
 export type ImageEditorElement = EditorElementBase<
   "image",
@@ -107,4 +107,5 @@ export type MenuOption =
   | "Export"
   | "Animation"
   | "Effect"
-  | "Fill";
+  | "Fill"
+  | "AspectRatio";

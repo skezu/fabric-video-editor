@@ -14,7 +14,7 @@ export const VideoResourcesPanel = observer(() => {
   };
   return (
     <>
-      <div className="text-sm px-[16px] pt-[16px] pb-[8px] font-semibold">
+      <div className="text-sm text-white px-[16px] pt-[16px] pb-[8px] font-semibold">
         Add Video
       </div>
       {store.videos.map((video, index) => {
