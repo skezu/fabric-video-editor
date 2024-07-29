@@ -9,6 +9,7 @@ import { Resources } from "./Resources";
 import { ElementsPanel } from "./panels/ElementsPanel";
 import { Menu } from "./Menu";
 import { TimeLine } from "./TimeLine";
+import ContextMenu from "./ContextMenu";
 
 export const Editor = observer(() => {
   const store = React.useContext(StoreContext);
@@ -48,9 +49,12 @@ export const Editor = observer(() => {
       <div className="bg-[#0e0e11] row-span-2 flex flex-col overflow-auto">
         <Resources />
       </div>
-      <div className="flex bg-[#eff3f5] items-center justify-center">
-        <canvas id="canvas" className="h-[500px] w-[800px] m-auto" />
-      </div>
+
+      <ContextMenu>
+        <div className="flex bg-[#eff3f5] items-center justify-center">
+          <canvas id="canvas" className="h-[500px] w-[800px] m-auto" />
+        </div>
+      </ContextMenu>
       <div className="bg-white col-start-4 row-start-2">
         <ElementsPanel />
       </div>

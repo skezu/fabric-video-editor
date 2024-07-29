@@ -7,6 +7,7 @@ export type EditorElementBase<T extends string, P> = {
   readonly type: T;
   placement: Placement;
   timeFrame: TimeFrame;
+  elementCurrentTime: number;
   properties: P;
 };
 export type VideoEditorElement = EditorElementBase<
@@ -38,19 +39,24 @@ export type EditorElement =
   | AudioEditorElement
   | TextEditorElement;
 
-export type Placement = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number;
-  scaleX: number;
-  scaleY: number;
-};
+  export type Placement = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    cropX?: number; // Add this property
+    cropY?: number; // Add this property
+    cropWidth?: number; // Add this property
+    cropHeight?: number; // Add this property
+    rotation: number; 
+    scaleX: number; 
+    scaleY: number; 
+  };
 
 export type TimeFrame = {
   start: number;
   end: number;
+  relativeStart: number;
 };
 
 export type EffectBase<T extends string> = {

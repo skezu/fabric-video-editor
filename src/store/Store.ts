@@ -1,25 +1,41 @@
-import { makeAutoObservable } from 'mobx';
-import { fabric } from 'fabric';
-import { getUid, isHtmlAudioElement, isHtmlImageElement, isHtmlVideoElement } from '@/utils';
-import anime, { get } from 'animejs';
-import { MenuOption, EditorElement, Animation, TimeFrame, VideoEditorElement, AudioEditorElement, Placement, ImageEditorElement, Effect, TextEditorElement } from '../types';
-import { FabricUitls } from '@/utils/fabric-utils';
-import { log } from 'console';
+import { makeAutoObservable } from "mobx";
+import { fabric } from "fabric";
+import {
+  getUid,
+  isHtmlAudioElement,
+  isHtmlImageElement,
+  isHtmlVideoElement,
+} from "@/utils";
+import anime, { get } from "animejs";
+import {
+  MenuOption,
+  EditorElement,
+  Animation,
+  TimeFrame,
+  VideoEditorElement,
+  AudioEditorElement,
+  Placement,
+  ImageEditorElement,
+  Effect,
+  TextEditorElement,
+} from "../types";
+import { FabricUitls } from "@/utils/fabric-utils";
+import { log } from "console";
 
 export class Store {
-  canvas: fabric.Canvas | null
+  canvas: fabric.Canvas | null;
 
   backgroundColor: string;
 
   selectedMenuOption: MenuOption;
-  audios: string[]
-  videos: string[]
-  images: string[]
-  editorElements: EditorElement[]
+  audios: string[];
+  videos: string[];
+  images: string[];
+  editorElements: EditorElement[];
   selectedElement: EditorElement | null;
 
-  maxTime: number
-  animations: Animation[]
+  maxTime: number;
+  animations: Animation[];
   animationTimeLine: anime.AnimeTimelineInstance;
   playing: boolean;
 
@@ -33,7 +49,7 @@ export class Store {
     this.images = [];
     this.audios = [];
     this.editorElements = [];
-    this.backgroundColor = '#111111';
+    this.backgroundColor = "#111111";
     this.maxTime = 30 * 1000;
     this.playing = false;
     this.currentKeyFrame = 0;
@@ -42,16 +58,16 @@ export class Store {
     this.canvasInitialized = false;
     this.animations = [];
     this.animationTimeLine = anime.timeline();
-    this.selectedMenuOption = 'Video';
+    this.selectedMenuOption = "Video";
     makeAutoObservable(this);
   }
 
   get currentTimeInMs() {
-    return this.currentKeyFrame * 1000 / this.fps;
+    return (this.currentKeyFrame * 1000) / this.fps;
   }
 
   setCurrentTimeInMs(time: number) {
-    this.currentKeyFrame = Math.floor(time / 1000 * this.fps);
+    this.currentKeyFrame = Math.floor((time / 1000) * this.fps);
   }
 
   setSelectedMenuOption(selectedMenuOption: MenuOption) {
@@ -114,7 +130,9 @@ export class Store {
     });
     for (let i = 0; i < this.animations.length; i++) {
       const animation = this.animations[i];
-      const editorElement = this.editorElements.find((element) => element.id === animation.targetId);
+      const editorElement = this.editorElements.find(
+        (element) => element.id === animation.targetId
+      );
       const fabricObject = editorElement?.fabricObject;
       if (!editorElement || !fabricObject) {
         continue;
@@ -122,134 +140,215 @@ export class Store {
       fabricObject.clipPath = undefined;
       switch (animation.type) {
         case "fadeIn": {
-          this.animationTimeLine.add({
-            opacity: [0, 1],
-            duration: animation.duration,
-            targets: fabricObject,
-            easing: 'linear',
-          }, editorElement.timeFrame.start);
+          this.animationTimeLine.add(
+            {
+              opacity: [0, 1],
+              duration: animation.duration,
+              targets: fabricObject,
+              easing: "linear",
+            },
+            editorElement.timeFrame.start
+          );
           break;
         }
         case "fadeOut": {
-          this.animationTimeLine.add({
-            opacity: [1, 0],
-            duration: animation.duration,
-            targets: fabricObject,
-            easing: 'linear',
-          }, editorElement.timeFrame.end - animation.duration);
-          break
+          this.animationTimeLine.add(
+            {
+              opacity: [1, 0],
+              duration: animation.duration,
+              targets: fabricObject,
+              easing: "linear",
+            },
+            editorElement.timeFrame.end - animation.duration
+          );
+          break;
         }
         case "slideIn": {
           const direction = animation.properties.direction;
           const targetPosition = {
             left: editorElement.placement.x,
             top: editorElement.placement.y,
-          }
+          };
           const startPosition = {
-            left: (direction === "left" ? - editorElement.placement.width : direction === "right" ? this.canvas?.width : editorElement.placement.x),
-            top: (direction === "top" ? - editorElement.placement.height : direction === "bottom" ? this.canvas?.height : editorElement.placement.y),
-          }
+            left:
+              direction === "left"
+                ? -editorElement.placement.width
+                : direction === "right"
+                ? this.canvas?.width
+                : editorElement.placement.x,
+            top:
+              direction === "top"
+                ? -editorElement.placement.height
+                : direction === "bottom"
+                ? this.canvas?.height
+                : editorElement.placement.y,
+          };
           if (animation.properties.useClipPath) {
-            const clipRectangle = FabricUitls.getClipMaskRect(editorElement, 50);
-            fabricObject.set('clipPath', clipRectangle)
+            const clipRectangle = FabricUitls.getClipMaskRect(
+              editorElement,
+              50
+            );
+            fabricObject.set("clipPath", clipRectangle);
           }
-          if(editorElement.type === "text" && animation.properties.textType === "character"){
-            this.canvas?.remove(...editorElement.properties.splittedTexts)
-            editorElement.properties.splittedTexts = getTextObjectsPartitionedByCharacters(editorElement.fabricObject,editorElement);
-              editorElement.properties.splittedTexts.forEach((textObject) => {
+          if (
+            editorElement.type === "text" &&
+            animation.properties.textType === "character"
+          ) {
+            this.canvas?.remove(...editorElement.properties.splittedTexts);
+            editorElement.properties.splittedTexts =
+              getTextObjectsPartitionedByCharacters(
+                editorElement.fabricObject,
+                editorElement
+              );
+            editorElement.properties.splittedTexts.forEach((textObject) => {
               this.canvas!.add(textObject);
-            })
-            const duration = animation.duration/2;
-            const delay = duration/editorElement.properties.splittedTexts.length;
-            for(let i = 0; i < editorElement.properties.splittedTexts.length; i++){
+            });
+            const duration = animation.duration / 2;
+            const delay =
+              duration / editorElement.properties.splittedTexts.length;
+            for (
+              let i = 0;
+              i < editorElement.properties.splittedTexts.length;
+              i++
+            ) {
               const splittedText = editorElement.properties.splittedTexts[i];
-              const offset =  {
+              const offset = {
                 left: splittedText.left! - editorElement.placement.x,
-                 top: splittedText.top! - editorElement.placement.y
-              }
-              this.animationTimeLine.add({
-                left: [startPosition.left!+offset.left, targetPosition.left+offset.left],
-                top: [startPosition.top!+offset.top, targetPosition.top+offset.top],
-                delay: i*delay,
-                duration: duration,
-                targets: splittedText,
-              }, editorElement.timeFrame.start); 
+                top: splittedText.top! - editorElement.placement.y,
+              };
+              this.animationTimeLine.add(
+                {
+                  left: [
+                    startPosition.left! + offset.left,
+                    targetPosition.left + offset.left,
+                  ],
+                  top: [
+                    startPosition.top! + offset.top,
+                    targetPosition.top + offset.top,
+                  ],
+                  delay: i * delay,
+                  duration: duration,
+                  targets: splittedText,
+                },
+                editorElement.timeFrame.start
+              );
             }
-            this.animationTimeLine.add({
-              opacity: [1, 0],
-              duration: 1,
-              targets: fabricObject,
-              easing: 'linear',
-            }, editorElement.timeFrame.start);
-            this.animationTimeLine.add({
-              opacity: [0, 1],
-              duration: 1,
-              targets: fabricObject,
-              easing: 'linear',
-            }, editorElement.timeFrame.start+animation.duration);
+            this.animationTimeLine.add(
+              {
+                opacity: [1, 0],
+                duration: 1,
+                targets: fabricObject,
+                easing: "linear",
+              },
+              editorElement.timeFrame.start
+            );
+            this.animationTimeLine.add(
+              {
+                opacity: [0, 1],
+                duration: 1,
+                targets: fabricObject,
+                easing: "linear",
+              },
+              editorElement.timeFrame.start + animation.duration
+            );
 
-            this.animationTimeLine.add({
-              opacity: [0, 1],
-              duration: 1,
-              targets: editorElement.properties.splittedTexts,
-              easing: 'linear',
-            }, editorElement.timeFrame.start);
-            this.animationTimeLine.add({
-              opacity: [1, 0],
-              duration: 1,
-              targets: editorElement.properties.splittedTexts,
-              easing: 'linear',
-            }, editorElement.timeFrame.start+animation.duration);
+            this.animationTimeLine.add(
+              {
+                opacity: [0, 1],
+                duration: 1,
+                targets: editorElement.properties.splittedTexts,
+                easing: "linear",
+              },
+              editorElement.timeFrame.start
+            );
+            this.animationTimeLine.add(
+              {
+                opacity: [1, 0],
+                duration: 1,
+                targets: editorElement.properties.splittedTexts,
+                easing: "linear",
+              },
+              editorElement.timeFrame.start + animation.duration
+            );
           }
-          this.animationTimeLine.add({
-            left: [startPosition.left, targetPosition.left],
-            top: [startPosition.top, targetPosition.top],
-            duration: animation.duration,
-            targets: fabricObject,
-            easing: 'linear',
-          }, editorElement.timeFrame.start);
-          break
+          this.animationTimeLine.add(
+            {
+              left: [startPosition.left, targetPosition.left],
+              top: [startPosition.top, targetPosition.top],
+              duration: animation.duration,
+              targets: fabricObject,
+              easing: "linear",
+            },
+            editorElement.timeFrame.start
+          );
+          break;
         }
         case "slideOut": {
           const direction = animation.properties.direction;
           const startPosition = {
             left: editorElement.placement.x,
             top: editorElement.placement.y,
-          }
+          };
           const targetPosition = {
-            left: (direction === "left" ? - editorElement.placement.width : direction === "right" ? this.canvas?.width : editorElement.placement.x),
-            top: (direction === "top" ? -100 - editorElement.placement.height : direction === "bottom" ? this.canvas?.height : editorElement.placement.y),
-          }
+            left:
+              direction === "left"
+                ? -editorElement.placement.width
+                : direction === "right"
+                ? this.canvas?.width
+                : editorElement.placement.x,
+            top:
+              direction === "top"
+                ? -100 - editorElement.placement.height
+                : direction === "bottom"
+                ? this.canvas?.height
+                : editorElement.placement.y,
+          };
           if (animation.properties.useClipPath) {
-            const clipRectangle = FabricUitls.getClipMaskRect(editorElement, 50);
-            fabricObject.set('clipPath', clipRectangle)
+            const clipRectangle = FabricUitls.getClipMaskRect(
+              editorElement,
+              50
+            );
+            fabricObject.set("clipPath", clipRectangle);
           }
-          this.animationTimeLine.add({
-            left: [startPosition.left, targetPosition.left],
-            top: [startPosition.top, targetPosition.top],
-            duration: animation.duration,
-            targets: fabricObject,
-            easing: 'linear',
-          }, editorElement.timeFrame.end - animation.duration);
-          break
+          this.animationTimeLine.add(
+            {
+              left: [startPosition.left, targetPosition.left],
+              top: [startPosition.top, targetPosition.top],
+              duration: animation.duration,
+              targets: fabricObject,
+              easing: "linear",
+            },
+            editorElement.timeFrame.end - animation.duration
+          );
+          break;
         }
         case "breathe": {
-          const itsSlideInAnimation = this.animations.find((a) => a.targetId === animation.targetId && (a.type === "slideIn"));
-          const itsSlideOutAnimation = this.animations.find((a) => a.targetId === animation.targetId && (a.type === "slideOut"));
-          const timeEndOfSlideIn = itsSlideInAnimation ? editorElement.timeFrame.start + itsSlideInAnimation.duration : editorElement.timeFrame.start;
-          const timeStartOfSlideOut = itsSlideOutAnimation ? editorElement.timeFrame.end - itsSlideOutAnimation.duration : editorElement.timeFrame.end;
+          const itsSlideInAnimation = this.animations.find(
+            (a) => a.targetId === animation.targetId && a.type === "slideIn"
+          );
+          const itsSlideOutAnimation = this.animations.find(
+            (a) => a.targetId === animation.targetId && a.type === "slideOut"
+          );
+          const timeEndOfSlideIn = itsSlideInAnimation
+            ? editorElement.timeFrame.start + itsSlideInAnimation.duration
+            : editorElement.timeFrame.start;
+          const timeStartOfSlideOut = itsSlideOutAnimation
+            ? editorElement.timeFrame.end - itsSlideOutAnimation.duration
+            : editorElement.timeFrame.end;
           if (timeEndOfSlideIn > timeStartOfSlideOut) {
             continue;
           }
           const duration = timeStartOfSlideOut - timeEndOfSlideIn;
           const easeFactor = 4;
-          const suitableTimeForHeartbeat = 1000 * 60 / 72 * easeFactor
+          const suitableTimeForHeartbeat = ((1000 * 60) / 72) * easeFactor;
           const upScale = 1.05;
           const currentScaleX = fabricObject.scaleX ?? 1;
           const currentScaleY = fabricObject.scaleY ?? 1;
           const finalScaleX = currentScaleX * upScale;
           const finalScaleY = currentScaleY * upScale;
-          const totalHeartbeats = Math.floor(duration / suitableTimeForHeartbeat);
+          const totalHeartbeats = Math.floor(
+            duration / suitableTimeForHeartbeat
+          );
           if (totalHeartbeats < 1) {
             continue;
           }
@@ -259,15 +358,18 @@ export class Store {
             keyframes.push({ scaleX: currentScaleX, scaleY: currentScaleY });
           }
 
-          this.animationTimeLine.add({
-            duration: duration,
-            targets: fabricObject,
-            keyframes,
-            easing: 'linear',
-            loop: true
-          }, timeEndOfSlideIn);
+          this.animationTimeLine.add(
+            {
+              duration: duration,
+              targets: fabricObject,
+              keyframes,
+              easing: "linear",
+              loop: true,
+            },
+            timeEndOfSlideIn
+          );
 
-          break
+          break;
         }
       }
     }
@@ -285,12 +387,14 @@ export class Store {
     if (this.canvas) {
       if (selectedElement?.fabricObject)
         this.canvas.setActiveObject(selectedElement.fabricObject);
-      else
-        this.canvas.discardActiveObject();
+      else this.canvas.discardActiveObject();
     }
   }
   updateSelectedElement() {
-    this.selectedElement = this.editorElements.find((element) => element.id === this.selectedElement?.id) ?? null;
+    this.selectedElement =
+      this.editorElements.find(
+        (element) => element.id === this.selectedElement?.id
+      ) ?? null;
   }
 
   setEditorElements(editorElements: EditorElement[]) {
@@ -301,12 +405,17 @@ export class Store {
   }
 
   updateEditorElement(editorElement: EditorElement) {
-    this.setEditorElements(this.editorElements.map((element) =>
-      element.id === editorElement.id ? editorElement : element
-    ));
+    this.setEditorElements(
+      this.editorElements.map((element) =>
+        element.id === editorElement.id ? editorElement : element
+      )
+    );
   }
 
-  updateEditorElementTimeFrame(editorElement: EditorElement, timeFrame: Partial<TimeFrame>) {
+  updateEditorElementTimeFrame(
+    editorElement: EditorElement,
+    timeFrame: Partial<TimeFrame>
+  ) {
     if (timeFrame.start != undefined && timeFrame.start < 0) {
       timeFrame.start = 0;
     }
@@ -318,25 +427,26 @@ export class Store {
       timeFrame: {
         ...editorElement.timeFrame,
         ...timeFrame,
-      }
-    }
+      },
+    };
     this.updateVideoElements();
     this.updateAudioElements();
     this.updateEditorElement(newEditorElement);
     this.refreshAnimations();
   }
 
-
   addEditorElement(editorElement: EditorElement) {
     this.setEditorElements([...this.editorElements, editorElement]);
     this.refreshElements();
-    this.setSelectedElement(this.editorElements[this.editorElements.length - 1]);
+    this.setSelectedElement(
+      this.editorElements[this.editorElements.length - 1]
+    );
   }
 
   removeEditorElement(id: string) {
-    this.setEditorElements(this.editorElements.filter(
-      (editorElement) => editorElement.id !== id
-    ));
+    this.setEditorElements(
+      this.editorElements.filter((editorElement) => editorElement.id !== id)
+    );
     this.refreshElements();
   }
 
@@ -344,14 +454,13 @@ export class Store {
     this.maxTime = maxTime;
   }
 
-
   setPlaying(playing: boolean) {
     this.playing = playing;
     this.updateVideoElements();
     this.updateAudioElements();
     if (playing) {
       this.startedTime = Date.now();
-      this.startedTimePlay = this.currentTimeInMs
+      this.startedTimePlay = this.currentTimeInMs;
       requestAnimationFrame(() => {
         this.playFrames();
       });
@@ -383,13 +492,12 @@ export class Store {
     if (this.canvas) {
       this.canvas.backgroundColor = this.backgroundColor;
     }
-    this.editorElements.forEach(
-      e => {
-        if (!e.fabricObject) return;
-        const isInside = e.timeFrame.start <= newTime && newTime <= e.timeFrame.end;
-        e.fabricObject.visible = isInside;
-      }
-    )
+    this.editorElements.forEach((e) => {
+      if (!e.fabricObject) return;
+      const isInside =
+        e.timeFrame.start <= newTime && newTime <= e.timeFrame.end;
+      e.fabricObject.visible = isInside;
+    });
     this.updateMediaElements(); // Update both audio and video
   }
 
@@ -399,18 +507,22 @@ export class Store {
         const media = document.getElementById(element.properties.elementId);
 
         if ((isHtmlVideoElement(media) || isHtmlAudioElement(media)) && media) {
-          const mediaTime = (this.currentTimeInMs - element.timeFrame.start) / 1000;
-          const isInside = element.timeFrame.start <= this.currentTimeInMs && this.currentTimeInMs <= element.timeFrame.end; // Use isInside
+          const mediaTime =
+            (this.currentTimeInMs - element.timeFrame.start) / 1000;
+          const isInside =
+            element.timeFrame.start <= this.currentTimeInMs &&
+            this.currentTimeInMs <= element.timeFrame.end; // Use isInside
 
           // Determine if we should START playing
-          if (this.playing && isInside && media.paused) { 
+          if (this.playing && isInside && media.paused) {
             media.currentTime = mediaTime;
             media.play();
-          } 
-          // Determine if we should PAUSE 
-          else if (!isInside || !this.playing) {  // Pause if not inside or not playing
+          }
+          // Determine if we should PAUSE
+          else if (!isInside || !this.playing) {
+            // Pause if not inside or not playing
             media.pause();
-            if (!isInside && media.currentTime !== 0) { 
+            if (!isInside && media.currentTime !== 0) {
               media.currentTime = 0; // Reset if outside and not at the start
             }
           }
@@ -424,12 +536,27 @@ export class Store {
       this.setPlaying(false);
     }
     this.updateTimeTo(seek);
+
+    // Update elementCurrentTime for all media elements based on seek position
+    this.editorElements.forEach((element) => {
+      if (element.type === "video" || element.type === "audio") {
+        const isInside =
+          element.timeFrame.start <= seek && seek <= element.timeFrame.end;
+        if (isInside) {
+          element.elementCurrentTime =
+            seek - element.timeFrame.start - element.timeFrame.relativeStart;
+        } else if (seek < element.timeFrame.start) {
+          element.elementCurrentTime = 0;
+        }
+      }
+    });
+
     this.updateVideoElements();
     this.updateAudioElements();
   }
 
   addVideo(index: number) {
-    const videoElement = document.getElementById(`video-${index}`)
+    const videoElement = document.getElementById(`video-${index}`);
     if (!isHtmlVideoElement(videoElement)) {
       return;
     }
@@ -438,166 +565,167 @@ export class Store {
     const canvasWidth = this.canvas?.getWidth() ?? 0;
     const canvasHeight = canvasWidth / aspectRatio;
     const id = getUid();
-    this.addEditorElement(
-      {
-        id,
-        name: `Media(video) ${index + 1}`,
-        type: "video",
-        placement: {
-          x: 0,
-          y: 0,
-          width: canvasWidth,
-          height: canvasHeight,
-          rotation: 0,
-          scaleX: 1,
-          scaleY: 1,
-        },
-        timeFrame: {
-          start: 0,
-          end: videoDurationMs,
-        },
-        properties: {
-          elementId: `video-${id}`,
-          src: videoElement.src,
-          effect: {
-            type: "none",
-          }
+    this.addEditorElement({
+      id,
+      name: `Media(video) ${index + 1}`,
+      type: "video",
+      placement: {
+        x: 0,
+        y: 0,
+        width: canvasWidth,
+        height: canvasHeight,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+      },
+      timeFrame: {
+        start: 0,
+        end: videoDurationMs,
+        relativeStart: 0,
+      },
+      elementCurrentTime: 0,
+      properties: {
+        elementId: `video-${id}`,
+        src: videoElement.src,
+        effect: {
+          type: "none",
         },
       },
-    );
+    });
   }
 
   addImage(index: number) {
-    const imageElement = document.getElementById(`image-${index}`)
+    const imageElement = document.getElementById(`image-${index}`);
     if (!isHtmlImageElement(imageElement)) {
       return;
     }
     const aspectRatio = imageElement.naturalWidth / imageElement.naturalHeight;
     const id = getUid();
-    this.addEditorElement(
-      {
-        id,
-        name: `Media(image) ${index + 1}`,
-        type: "image",
-        placement: {
-          x: 0,
-          y: 0,
-          width: 100 * aspectRatio,
-          height: 100,
-          rotation: 0,
-          scaleX: 1,
-          scaleY: 1,
-        },
-        timeFrame: {
-          start: 0,
-          end: this.maxTime,
-        },
-        properties: {
-          elementId: `image-${id}`,
-          src: imageElement.src,
-          effect: {
-            type: "none",
-          }
+    this.addEditorElement({
+      id,
+      name: `Media(image) ${index + 1}`,
+      type: "image",
+      placement: {
+        x: 0,
+        y: 0,
+        width: 100 * aspectRatio,
+        height: 100,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+      },
+      timeFrame: {
+        start: 0,
+        end: this.maxTime,
+        relativeStart: 0,
+      },
+      elementCurrentTime: 0,
+      properties: {
+        elementId: `image-${id}`,
+        src: imageElement.src,
+        effect: {
+          type: "none",
         },
       },
-    );
+    });
   }
 
   addAudio(index: number) {
-    const audioElement = document.getElementById(`audio-${index}`)
+    const audioElement = document.getElementById(`audio-${index}`);
     if (!isHtmlAudioElement(audioElement)) {
       return;
     }
     const audioDurationMs = audioElement.duration * 1000;
     const id = getUid();
-    this.addEditorElement(
-      {
-        id,
-        name: `Media(audio) ${index + 1}`,
-        type: "audio",
-        placement: {
-          x: 0,
-          y: 0,
-          width: 100,
-          height: 100,
-          rotation: 0,
-          scaleX: 1,
-          scaleY: 1,
-        },
-        timeFrame: {
-          start: 0,
-          end: audioDurationMs,
-        },
-        properties: {
-          elementId: `audio-${id}`,
-          src: audioElement.src,
-        }
+    this.addEditorElement({
+      id,
+      name: `Media(audio) ${index + 1}`,
+      type: "audio",
+      placement: {
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
       },
-    );
-
+      timeFrame: {
+        start: 0,
+        end: audioDurationMs,
+        relativeStart: 0,
+      },
+      elementCurrentTime: 0,
+      properties: {
+        elementId: `audio-${id}`,
+        src: audioElement.src,
+      },
+    });
   }
-  addText(options: {
-    text: string,
-    fontSize: number,
-    fontWeight: number,
-  }) {
+  addText(options: { text: string; fontSize: number; fontWeight: number }) {
     const id = getUid();
     const index = this.editorElements.length;
-    this.addEditorElement(
-      {
-        id,
-        name: `Text ${index + 1}`,
-        type: "text",
-        placement: {
-          x: 0,
-          y: 0,
-          width: 100,
-          height: 100,
-          rotation: 0,
-          scaleX: 1,
-          scaleY: 1,
-        },
-        timeFrame: {
-          start: 0,
-          end: this.maxTime,
-        },
-        properties: {
-          text: options.text,
-          fontSize: options.fontSize,
-          fontWeight: options.fontWeight,
-          splittedTexts: [],
-        },
+    this.addEditorElement({
+      id,
+      name: `Text ${index + 1}`,
+      type: "text",
+      placement: {
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
       },
-    );
+      timeFrame: {
+        start: 0,
+        end: this.maxTime,
+        relativeStart: 0,
+      },
+      elementCurrentTime: 0,
+      properties: {
+        text: options.text,
+        fontSize: options.fontSize,
+        fontWeight: options.fontWeight,
+        splittedTexts: [],
+      },
+    });
   }
 
   updateVideoElements() {
     this.editorElements.forEach((element) => {
       if (element.type === "video") {
-        const video = document.getElementById(element.properties.elementId) as HTMLVideoElement;
+        const video = document.getElementById(
+          element.properties.elementId
+        ) as HTMLVideoElement;
         if (isHtmlVideoElement(video)) {
           // Correct videoTime calculation (ensure it's never negative)
-          const videoTime = Math.max(0, (this.currentTimeInMs - element.timeFrame.start) / 1000); 
+          const videoTime = Math.max(
+            0,
+            (this.currentTimeInMs - element.timeFrame.relativeStart) / 1000
+          );
 
-          const isInside = element.timeFrame.start <= this.currentTimeInMs && this.currentTimeInMs <= element.timeFrame.end;
+          const isInside =
+            element.timeFrame.start <= this.currentTimeInMs &&
+            this.currentTimeInMs <= element.timeFrame.end;
+          element.elementCurrentTime =
+            element.timeFrame.relativeStart +
+            (this.currentTimeInMs - element.timeFrame.start);
 
-          console.log("name : ", element.name);
-          console.log("videoTime", videoTime);
-          console.log("element.timeFrame.start", element.timeFrame.start / 1000);
-          console.log("element.timeFrame.end", element.timeFrame.end / 1000);
-          console.log("this.currentTimeInMs", this.currentTimeInMs / 1000);
+          // console.log("name : ", element.name);
+          // console.log("videoTime", videoTime);
+          // console.log("element.timeFrame.start", element.timeFrame.start / 1000);
+          // console.log("element.timeFrame.end", element.timeFrame.end / 1000);
+          // console.log("this.currentTimeInMs", this.currentTimeInMs / 1000);
+          // console.log("element.elementCurrentTime", element.elementCurrentTime);
+          // console.log("element.elementCurrentTime (sec) ", element.elementCurrentTime / 1000);
+          // console.log("element.timeFrame.relativeStart", element.timeFrame.relativeStart);
 
-          // Determine the desired state based on the current time and play status
-          if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
-            video.currentTime = videoTime + (element.timeFrame.start / 1000);
-          }
-          else {
-            // If metadata is not loaded, wait for the loadedmetadata event
-            video.addEventListener('loadedmetadata', () => {
-              video.currentTime = videoTime;
-              video.play();
-            }, { once: true }); // Use { once: true } to execute the listener only once
-          }
+          video.currentTime = element.elementCurrentTime
+            ? element.elementCurrentTime / 1000
+            : videoTime;
+
           if (this.playing && isInside) {
             // If the video should be playing and is not already playing, set the currentTime and play
             if (video.paused) {
@@ -611,16 +739,17 @@ export class Store {
       }
     });
   }
-  
+
   updateAudioElements() {
-    this.editorElements.filter(
-      (element): element is AudioEditorElement =>
-        element.type === "audio"
-    )
+    this.editorElements
+      .filter(
+        (element): element is AudioEditorElement => element.type === "audio"
+      )
       .forEach((element) => {
         const audio = document.getElementById(element.properties.elementId);
         if (isHtmlAudioElement(audio)) {
-          const audioTime = (this.currentTimeInMs - element.timeFrame.start) / 1000;
+          const audioTime =
+            (this.currentTimeInMs - element.timeFrame.start) / 1000;
           audio.currentTime = audioTime;
           if (this.playing && audioTime >= 0 && audioTime <= audio.duration) {
             audio.play();
@@ -628,7 +757,7 @@ export class Store {
             audio.pause();
           }
         }
-      })
+      });
   }
   // saveCanvasToVideo() {
   //   const video = document.createElement("video");
@@ -661,10 +790,12 @@ export class Store {
   saveCanvasToVideoWithAUdio() {
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
     const stream = canvas.captureStream(60);
-    const audioElements = this.editorElements.filter(isEditorAudioElement)
+    const audioElements = this.editorElements.filter(isEditorAudioElement);
     const audioStreams: MediaStream[] = [];
     audioElements.forEach((audio) => {
-      const audioElement = document.getElementById(audio.properties.elementId) as HTMLAudioElement;
+      const audioElement = document.getElementById(
+        audio.properties.elementId
+      ) as HTMLAudioElement;
       let ctx = new AudioContext();
       let sourceNode = ctx.createMediaElementSource(audioElement);
       let dest = ctx.createMediaStreamDestination();
@@ -674,7 +805,7 @@ export class Store {
     });
     audioStreams.forEach((audioStream) => {
       stream.addTrack(audioStream.getAudioTracks()[0]);
-    })
+    });
     const video = document.createElement("video");
     video.srcObject = stream;
     video.height = 1920;
@@ -701,8 +832,7 @@ export class Store {
         mediaRecorder.stop();
       }, this.maxTime);
       video.remove();
-    })
-
+    });
   }
 
   refreshElements() {
@@ -721,10 +851,23 @@ export class Store {
             element.properties.elementId
           );
           if (!isHtmlVideoElement(videoElement)) continue;
-          // const filters = [];
-          // if (element.properties.effect?.type === "blackAndWhite") {
-          //   filters.push(new fabric.Image.filters.Grayscale());
-          // }
+
+          console.log("videoElement", element.name);
+          console.log({
+            cropX: element.placement.cropX, // Custom crop X
+            cropY: element.placement.cropY, // Custom crop Y
+            cropWidth: element.placement.cropWidth, // Custom crop width
+            cropHeight: element.placement.cropHeight, // Custom crop height
+            width: element.placement.width,
+            height: element.placement.height,
+            left: element.placement.x,
+            top: element.placement.y,
+            scaleX: element.placement.scaleX,
+            scaleY: element.placement.scaleY,
+            videoWidth: videoElement.videoWidth,
+            videoHeight: videoElement.videoHeight,
+          });
+
           const videoObject = new fabric.CoverVideo(videoElement, {
             name: element.id,
             left: element.placement.x,
@@ -737,9 +880,40 @@ export class Store {
             objectCaching: false,
             selectable: true,
             lockUniScaling: true,
-            // filters: filters,
             customFilter: element.properties.effect.type,
           });
+
+          // *** Apply Cropping *** (Updated Code)
+          if (
+            element.placement.cropX !== undefined &&
+            element.placement.cropY !== undefined &&
+            element.placement.cropWidth !== undefined &&
+            element.placement.cropHeight !== undefined
+          ) {
+            // Calculate scaling factors
+            const scaleX =
+              videoObject.getScaledWidth() / videoElement.videoWidth;
+            const scaleY =
+              videoObject.getScaledHeight() / videoElement.videoHeight;
+
+            console.log({
+              cropX: element.placement.cropX, // Custom crop X
+              cropY: element.placement.cropY, // Custom crop Y
+              cropWidth: element.placement.cropWidth, // Custom crop width
+              cropHeight: element.placement.cropHeight, // Custom crop height
+              scaleX: scaleX,
+              scaleY: scaleY,
+            });
+
+            // Apply cropping
+            videoObject.setCustomCrop(
+              element.placement.cropX,
+              element.placement.cropY,
+              element.placement.cropWidth,
+              element.placement.cropHeight
+            );
+          }
+          // *** End of Cropping Logic ***
 
           element.fabricObject = videoObject;
           element.properties.imageObject = videoObject;
@@ -783,41 +957,67 @@ export class Store {
             element.properties.elementId
           );
           if (!isHtmlImageElement(imageElement)) continue;
-          // const filters = [];
-          // if (element.properties.effect?.type === "blackAndWhite") {
-          //   filters.push(new fabric.Image.filters.Grayscale());
-          // }
+        
           const imageObject = new fabric.CoverImage(imageElement, {
             name: element.id,
             left: element.placement.x,
             top: element.placement.y,
+            width: element.placement.width,
+            height: element.placement.height,
+            scaleX: element.placement.scaleX,
+            scaleY: element.placement.scaleY,
             angle: element.placement.rotation,
             objectCaching: false,
             selectable: true,
             lockUniScaling: true,
-            // filters
             customFilter: element.properties.effect.type,
           });
-          // imageObject.applyFilters();
+        
+          // *** Apply Cropping *** (Updated Code)
+          if (
+            element.placement.cropX !== undefined &&
+            element.placement.cropY !== undefined &&
+            element.placement.cropWidth !== undefined &&
+            element.placement.cropHeight !== undefined
+          ) {
+            // Calculate scaling factors
+            const scaleX =
+              imageObject.getScaledWidth() / imageElement.naturalWidth;
+            const scaleY =
+              imageObject.getScaledHeight() / imageElement.naturalHeight;
+        
+            console.log({
+              cropX: element.placement.cropX,
+              cropY: element.placement.cropY,
+              cropWidth: element.placement.cropWidth,
+              cropHeight: element.placement.cropHeight,
+              scaleX: scaleX,
+              scaleY: scaleY,
+            });
+        
+            // Apply cropping
+            imageObject.setCustomCrop(
+              element.placement.cropX,
+              element.placement.cropY,
+              element.placement.cropWidth,
+              element.placement.cropHeight
+            );
+          }
+          // *** End of Cropping Logic ***
+        
           element.fabricObject = imageObject;
           element.properties.imageObject = imageObject;
-          const image = {
-            w: imageElement.naturalWidth,
-            h: imageElement.naturalHeight,
-          };
-
-          imageObject.width = image.w;
-          imageObject.height = image.h;
-          imageElement.width = image.w;
-          imageElement.height = image.h;
-          imageObject.scaleToHeight(image.w);
-          imageObject.scaleToWidth(image.h);
-          const toScale = {
-            x: element.placement.width / image.w,
-            y: element.placement.height / image.h,
-          };
-          imageObject.scaleX = toScale.x * element.placement.scaleX;
-          imageObject.scaleY = toScale.y * element.placement.scaleY;
+        
+          // REMOVE THESE LINES: 
+          // imageObject.scaleToHeight(image.w);
+          // imageObject.scaleToWidth(image.h);
+          // const toScale = {
+          //   x: element.placement.width / image.w,
+          //   y: element.placement.height / image.h,
+          // };
+          // imageObject.scaleX = toScale.x * element.placement.scaleX;
+          // imageObject.scaleY = toScale.y * element.placement.scaleY;
+        
           canvas.add(imageObject);
           canvas.on("object:modified", function (e) {
             if (!e.target) return;
@@ -922,7 +1122,7 @@ export class Store {
     );
 
     if (elementIndex === -1) {
-      return; 
+      return;
     }
 
     const originalElement = this.editorElements[elementIndex];
@@ -936,24 +1136,24 @@ export class Store {
       },
     };
 
-    // Create the new split element using addEditorElement 
+    // Create the new split element using addEditorElement
     // based on the original element's type
     switch (originalElement.type) {
-      case 'video': 
+      case "video":
         this.addVideoFromElement(originalElement, splitTime);
         break;
-      case 'audio':
+      case "audio":
         this.addAudioFromElement(originalElement, splitTime);
         break;
-      case 'image':
+      case "image":
         this.addImageFromElement(originalElement, splitTime);
         break;
-      case 'text': 
-        this.addTextFromElement(originalElement, splitTime); 
-        break; 
+      case "text":
+        this.addTextFromElement(originalElement, splitTime);
+        break;
       default:
         console.warn(`Split not implemented for type: ${originalElement.type}`);
-    } 
+    }
   }
 
   // Helper functions to create new elements based on type and splitTime
@@ -961,13 +1161,15 @@ export class Store {
     const id = getUid();
     this.addEditorElement({
       id,
-      name: `Media(video) (split)`, // You can improve the naming 
+      name: `Media(video) (split)`, // You can improve the naming
       type: "video",
       placement: { ...originalElement.placement },
       timeFrame: {
         start: splitTime,
-        end: originalElement.timeFrame.end, 
+        end: originalElement.timeFrame.end,
+        relativeStart: splitTime,
       },
+      elementCurrentTime: 0,
       properties: { ...originalElement.properties, elementId: `video-${id}` },
     });
   }
@@ -982,7 +1184,9 @@ export class Store {
       timeFrame: {
         start: splitTime,
         end: originalElement.timeFrame.end,
+        relativeStart: splitTime,
       },
+      elementCurrentTime: 0,
       properties: { ...originalElement.properties, elementId: `audio-${id}` },
     });
   }
@@ -997,7 +1201,9 @@ export class Store {
       timeFrame: {
         start: splitTime,
         end: originalElement.timeFrame.end,
+        relativeStart: splitTime,
       },
+      elementCurrentTime: 0,
       properties: { ...originalElement.properties, elementId: `image-${id}` },
     });
   }
@@ -1012,14 +1218,13 @@ export class Store {
       timeFrame: {
         start: splitTime,
         end: originalElement.timeFrame.end,
+        relativeStart: splitTime,
       },
+      elementCurrentTime: 0,
       properties: { ...originalElement.properties }, // Text properties are likely the same
     });
   }
-
-
 }
-
 
 export function isEditorAudioElement(
   element: EditorElement
@@ -1038,29 +1243,35 @@ export function isEditorImageElement(
   return element.type === "image";
 }
 
-
-function getTextObjectsPartitionedByCharacters(textObject: fabric.Text, element:TextEditorElement):fabric.Text[]{
+function getTextObjectsPartitionedByCharacters(
+  textObject: fabric.Text,
+  element: TextEditorElement
+): fabric.Text[] {
   let copyCharsObjects: fabric.Text[] = [];
   // replace all line endings with blank
-  const characters = (textObject.text ?? "").split('').filter((m) => m !== '\n');
+  const characters = (textObject.text ?? "")
+    .split("")
+    .filter((m) => m !== "\n");
   const charObjects = textObject.__charBounds;
   if (!charObjects) return [];
-  const charObjectFixed = charObjects.map((m, index) => m.slice(0, m.length - 1).map(m => ({ m, index }))).flat();
+  const charObjectFixed = charObjects
+    .map((m, index) => m.slice(0, m.length - 1).map((m) => ({ m, index })))
+    .flat();
   const lineHeight = textObject.getHeightOfLine(0);
   for (let i = 0; i < characters.length; i++) {
-    if(!charObjectFixed[i]) continue;
+    if (!charObjectFixed[i]) continue;
     const { m: charObject, index: lineIndex } = charObjectFixed[i];
     const char = characters[i];
     const scaleX = textObject.scaleX ?? 1;
     const scaleY = textObject.scaleY ?? 1;
     const charTextObject = new fabric.Text(char, {
-      left: charObject.left * scaleX + (element.placement.x),
+      left: charObject.left * scaleX + element.placement.x,
       scaleX: scaleX,
       scaleY: scaleY,
-      top: lineIndex * lineHeight * scaleY + (element.placement.y),
+      top: lineIndex * lineHeight * scaleY + element.placement.y,
       fontSize: textObject.fontSize,
       fontWeight: textObject.fontWeight,
-      fill : '#fff',
+      fill: "#fff",
     });
     copyCharsObjects.push(charTextObject);
   }
