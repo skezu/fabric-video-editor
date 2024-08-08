@@ -58,8 +58,8 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
     const [cropClientDimensions, setCropClientDimensions] = useState({ width: 0, height: 0 });
 
     const [isLoading, setIsLoading] = useState(false); // Add loading state
-    // const API_ENDPOINT = "http://localhost:8000/track_faces/"; // Your API URL
-    const API_ENDPOINT = "http://3.74.216.181/track_faces/"; // Your API URL
+    const API_ENDPOINT = "http://localhost:8000/track_faces/"; // Your API URL
+    // const API_ENDPOINT = "http://3.74.216.181/track_faces/"; // Your API URL
 
     // Function to update aspect ratio based on selected format
     const updateAspectToFormat = (format: string) => {

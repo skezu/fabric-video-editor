@@ -454,6 +454,7 @@ export class Store {
     this.maxTime = maxTime;
   }
 
+  // Start the play loop with requestAnimationFrame
   setPlaying(playing: boolean) {
     this.playing = playing;
     this.updateVideoElements();
@@ -467,9 +468,11 @@ export class Store {
     }
   }
 
+
   startedTime = 0;
   startedTimePlay = 0;
 
+  // Continuous play loop
   playFrames() {
     if (!this.playing) {
       return;
@@ -486,6 +489,7 @@ export class Store {
       });
     }
   }
+  // Update time and apply custom cropping
   updateTimeTo(newTime: number) {
     this.setCurrentTimeInMs(newTime);
     this.animationTimeLine.seek(newTime);
@@ -497,8 +501,34 @@ export class Store {
       const isInside =
         e.timeFrame.start <= newTime && newTime <= e.timeFrame.end;
       e.fabricObject.visible = isInside;
+      if (isInside && e.type === 'video') {
+        this.applyCustomCrop(e, newTime);
+      }
     });
     this.updateMediaElements(); // Update both audio and video
+  }
+
+  // New method to apply custom cropping based on current time
+  applyCustomCrop(element: EditorElement, newTime: number) {
+    if ('customCrop' in element.properties && element.properties.customCrop.length > 0) {
+      const videoElement = document.getElementById(element.properties.elementId) as HTMLVideoElement;
+      if (!videoElement) return;
+
+      const currentTime = newTime / 1000; // Convert ms to seconds
+      const frameRate = element.properties.customCrop.length / (videoElement.duration ?? 1);
+      const currentFrame = Math.round(currentTime * frameRate);
+      const currentSuggestion = element.properties.customCrop[currentFrame];
+
+      if (currentSuggestion) {
+        element.fabricObject.setCustomCrop(
+          currentSuggestion.crop.x,
+          currentSuggestion.crop.y,
+          currentSuggestion.crop.width,
+          currentSuggestion.crop.height
+        );
+        this.canvas?.renderAll(); // Re-render the canvas to apply the new crop
+      }
+    }
   }
 
   updateMediaElements() {
