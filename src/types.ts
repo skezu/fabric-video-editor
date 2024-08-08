@@ -1,5 +1,18 @@
 import { fabric } from "fabric";
 
+export type CropSuggestion = {
+  frame: number;
+  originalWidth: number;
+  originalHeight: number;
+  crop: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+  };
+};
+
+
 export type EditorElementBase<T extends string, P> = {
   readonly id: string;
   fabricObject?: fabric.Object;
@@ -12,7 +25,7 @@ export type EditorElementBase<T extends string, P> = {
 };
 export type VideoEditorElement = EditorElementBase<
   "video",
-  { src: string; elementId: string; imageObject?: fabric.Image, effect: Effect}
+  { src: string; elementId: string; imageObject?: fabric.Image, effect: Effect, customCrop: CropSuggestion[]}
 >;
 export type ImageEditorElement = EditorElementBase<
   "image",
@@ -54,9 +67,9 @@ export type EditorElement =
   };
 
 export type TimeFrame = {
-  start: number;
-  end: number;
-  relativeStart: number;
+  start: number; // the start time of the current element based on the editor timeline
+  end: number; // the end time of the current element based on the editor timeline
+  relativeStart: number; // the start time of the current element based on the video duration
 };
 
 export type EffectBase<T extends string> = {

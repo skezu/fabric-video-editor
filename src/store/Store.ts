@@ -515,7 +515,10 @@ export class Store {
 
           // Determine if we should START playing
           if (this.playing && isInside && media.paused) {
-            media.currentTime = mediaTime;
+            // Adjusted logic to correctly set media currentTime using relativeStart
+            const adjustedMediaTime =
+              mediaTime + element.timeFrame.relativeStart / 1000;
+            media.currentTime = adjustedMediaTime;
             media.play();
           }
           // Determine if we should PAUSE
@@ -523,7 +526,7 @@ export class Store {
             // Pause if not inside or not playing
             media.pause();
             if (!isInside && media.currentTime !== 0) {
-              media.currentTime = 0; // Reset if outside and not at the start
+              media.currentTime = element.timeFrame.relativeStart; // Reset if outside and not at the start
             }
           }
         }
@@ -546,7 +549,7 @@ export class Store {
           element.elementCurrentTime =
             seek - element.timeFrame.start - element.timeFrame.relativeStart;
         } else if (seek < element.timeFrame.start) {
-          element.elementCurrentTime = 0;
+          element.elementCurrentTime = element.timeFrame.relativeStart;
         }
       }
     });
@@ -853,20 +856,20 @@ export class Store {
           if (!isHtmlVideoElement(videoElement)) continue;
 
           console.log("videoElement", element.name);
-          console.log({
-            cropX: element.placement.cropX, // Custom crop X
-            cropY: element.placement.cropY, // Custom crop Y
-            cropWidth: element.placement.cropWidth, // Custom crop width
-            cropHeight: element.placement.cropHeight, // Custom crop height
-            width: element.placement.width,
-            height: element.placement.height,
-            left: element.placement.x,
-            top: element.placement.y,
-            scaleX: element.placement.scaleX,
-            scaleY: element.placement.scaleY,
-            videoWidth: videoElement.videoWidth,
-            videoHeight: videoElement.videoHeight,
-          });
+          // console.log({
+          //   cropX: element.placement.cropX, // Custom crop X
+          //   cropY: element.placement.cropY, // Custom crop Y
+          //   cropWidth: element.placement.cropWidth, // Custom crop width
+          //   cropHeight: element.placement.cropHeight, // Custom crop height
+          //   width: element.placement.width,
+          //   height: element.placement.height,
+          //   left: element.placement.x,
+          //   top: element.placement.y,
+          //   scaleX: element.placement.scaleX,
+          //   scaleY: element.placement.scaleY,
+          //   videoWidth: videoElement.videoWidth,
+          //   videoHeight: videoElement.videoHeight,
+          // });
 
           const videoObject = new fabric.CoverVideo(videoElement, {
             name: element.id,
@@ -906,12 +909,38 @@ export class Store {
             });
 
             // Apply cropping
-            videoObject.setCustomCrop(
-              element.placement.cropX,
-              element.placement.cropY,
-              element.placement.cropWidth,
-              element.placement.cropHeight
-            );
+            if (
+              "customCrop" in element.properties &&
+              element.properties.customCrop.length > 0
+            ) {
+              // get element current frame
+              const currentTime = videoElement.currentTime;
+              const frameRate =
+                element.properties.customCrop.length /
+                (videoElement.duration ?? 1);
+              const currentFrame = Math.round(currentTime * frameRate);
+              const currentSuggestion =
+                element.properties.customCrop[currentFrame];
+              console.log({
+                currentTime: currentTime,
+                currentFrame: currentFrame,
+                frameRate: frameRate,
+                currentSuggestion: currentSuggestion,
+              });
+              videoObject.setCustomCrop(
+                currentSuggestion.crop.x,
+                currentSuggestion.crop.y,
+                currentSuggestion.crop.width,
+                currentSuggestion.crop.height
+              );
+            } else {
+              videoObject.setCustomCrop(
+                element.placement.cropX,
+                element.placement.cropY,
+                element.placement.cropWidth,
+                element.placement.cropHeight
+              );
+            }
           }
           // *** End of Cropping Logic ***
 
@@ -957,7 +986,7 @@ export class Store {
             element.properties.elementId
           );
           if (!isHtmlImageElement(imageElement)) continue;
-        
+
           const imageObject = new fabric.CoverImage(imageElement, {
             name: element.id,
             left: element.placement.x,
@@ -972,7 +1001,7 @@ export class Store {
             lockUniScaling: true,
             customFilter: element.properties.effect.type,
           });
-        
+
           // *** Apply Cropping *** (Updated Code)
           if (
             element.placement.cropX !== undefined &&
@@ -985,7 +1014,7 @@ export class Store {
               imageObject.getScaledWidth() / imageElement.naturalWidth;
             const scaleY =
               imageObject.getScaledHeight() / imageElement.naturalHeight;
-        
+
             console.log({
               cropX: element.placement.cropX,
               cropY: element.placement.cropY,
@@ -994,7 +1023,7 @@ export class Store {
               scaleX: scaleX,
               scaleY: scaleY,
             });
-        
+
             // Apply cropping
             imageObject.setCustomCrop(
               element.placement.cropX,
@@ -1004,11 +1033,11 @@ export class Store {
             );
           }
           // *** End of Cropping Logic ***
-        
+
           element.fabricObject = imageObject;
           element.properties.imageObject = imageObject;
-        
-          // REMOVE THESE LINES: 
+
+          // REMOVE THESE LINES:
           // imageObject.scaleToHeight(image.w);
           // imageObject.scaleToWidth(image.h);
           // const toScale = {
@@ -1017,7 +1046,7 @@ export class Store {
           // };
           // imageObject.scaleX = toScale.x * element.placement.scaleX;
           // imageObject.scaleY = toScale.y * element.placement.scaleY;
-        
+
           canvas.add(imageObject);
           canvas.on("object:modified", function (e) {
             if (!e.target) return;

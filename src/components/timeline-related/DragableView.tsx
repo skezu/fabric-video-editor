@@ -53,6 +53,7 @@ function DragableView(props: {
   };
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     window.addEventListener("mouseup", handleMouseUp as any);
     window.addEventListener("mousemove", handleMouseMove as any);
     return () => {

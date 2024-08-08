@@ -1,12 +1,13 @@
 "use client";
-import React, { useState, useContext, useRef, useEffect } from "react";
-import { EditorElement, Placement } from "@/types";
+import React, { useState, useContext, useRef, useEffect, CSSProperties } from "react";
+import { CropSuggestion, EditorElement, Placement } from "@/types";
 import { StoreContext } from "@/store";
 import { isEditorImageElement, isEditorVideoElement } from "@/store/Store";
 import ReactCrop, { centerCrop, makeAspectCrop, Crop, PixelCrop, convertToPixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { fabric } from "fabric";
 import { CoverImage, CoverVideo } from "@/utils/fabric-utils";
+
 
 interface ReframeModalProps {
     onClose: () => void;
@@ -15,13 +16,12 @@ interface ReframeModalProps {
 
 function calculatePixelCrop(cropValues: PixelCrop, imageWidth: number, imageHeight: number, sourceWidth: number, sourceHeight: number) {
     return {
-        x: (cropValues.x ?? 0) * sourceWidth / imageWidth ,
+        x: (cropValues.x ?? 0) * sourceWidth / imageWidth,
         y: (cropValues.y ?? 0) * sourceHeight / imageHeight,
         width: (cropValues.width ?? 0) * sourceWidth / imageWidth,
         height: (cropValues.height ?? 0) * sourceHeight / imageHeight,
     };
 }
-
 
 function centerAspectCrop(
     mediaWidth: number,
@@ -57,6 +57,10 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
     const [mediaDimensions, setMediaDimensions] = useState({ width: 0, height: 0 });
     const [cropClientDimensions, setCropClientDimensions] = useState({ width: 0, height: 0 });
 
+    const [isLoading, setIsLoading] = useState(false); // Add loading state
+    // const API_ENDPOINT = "http://localhost:8000/track_faces/"; // Your API URL
+    const API_ENDPOINT = "http://3.74.216.181/track_faces/"; // Your API URL
+
     // Function to update aspect ratio based on selected format
     const updateAspectToFormat = (format: string) => {
         switch (format) {
@@ -89,10 +93,7 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
             const scaleFactor = canvasWidth / completedCrop.width;
             const desiredHeight = completedCrop.height * scaleFactor;
 
-            // Get crop data using getCrop()
-
-
-            // Create temporary image element 
+            // Create temporary image element
             const tempImg = document.createElement('img');
 
             // Get crop data using getCrop()
@@ -103,13 +104,12 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
 
             console.log("cropData: ", cropData);
 
-
             // Convert completedCrop to pixel values
             const pixelCrop = calculatePixelCrop(completedCrop, cropClientDimensions.width, cropClientDimensions.height, mediaDimensions.width, mediaDimensions.height);
             console.log("completedCrop: ", completedCrop);
             console.log("pixelCrop: ", pixelCrop);
-            console.log("scaleFactor: ", scaleFactor)
-            // Update the element's Placement with crop information
+            console.log("scaleFactor: ", scaleFactor);
+
             // Update the element's Placement with pixel crop information
             const newPlacement: Placement = {
                 ...element.placement,
@@ -119,8 +119,8 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
                 y: (store.canvas?.getHeight() ?? 0) / 2 - desiredHeight / 2,
                 cropX: pixelCrop.x, // Use pixelCrop values
                 cropY: pixelCrop.y,
-                cropWidth: pixelCrop.width, // Use pixelCrop values * scaleFactor,
-                cropHeight: pixelCrop.height, // Use pixelCrop values * scaleFactor,
+                cropWidth: pixelCrop.width, // Use pixelCrop values
+                cropHeight: pixelCrop.height, // Use pixelCrop values
             };
 
             store.updateEditorElement({
@@ -131,6 +131,54 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
 
         onClose();
     };
+
+
+    const [cropSuggestions, setCropSuggestions] = useState<any[]>([]);
+    const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState(0);
+    const [cropStyle, setCropStyle] = useState<CSSProperties>({});
+
+    // ... (keep other useEffect hooks as they are)
+
+    useEffect(() => {
+        var customCrop : CropSuggestion[] = [];
+        if ('customCrop' in element.properties && element.properties.customCrop.length > 0) {
+            customCrop = element.properties.customCrop;
+        }
+        if (customCrop.length > 0 && videoRef.current) {
+            const updateCropStyle = () => {
+                const currentTime = videoRef.current!.currentTime;
+                const frameRate = customCrop.length / (videoRef.current!.duration ?? 1);
+                const currentFrame = Math.round(currentTime * frameRate);
+                const currentSuggestion = customCrop[currentFrame];
+                console.log({
+                    time: videoRef.current?.currentTime,
+                    crop: customCrop[currentFrame],
+                });
+                if (currentSuggestion) {
+                    const scaleFactor = videoRef.current!.clientWidth / currentSuggestion.originalWidth;
+                    setCropStyle({
+                        position: "absolute",
+                        left: `${currentSuggestion.crop.x * scaleFactor}px`,
+                        top: `${currentSuggestion.crop.y * scaleFactor}px`,
+                        width: `${currentSuggestion.crop.width * scaleFactor}px`,
+                        height: `${currentSuggestion.crop.height * scaleFactor}px`,
+                        border: "2px solid blue",
+                        pointerEvents: "none",
+                    });
+                }
+            };
+
+            videoRef.current.addEventListener('timeupdate', updateCropStyle);
+            return () => videoRef.current?.removeEventListener('timeupdate', updateCropStyle);
+        }
+    }, [videoRef.current?.currentTime,cropSuggestions]);
+
+    const CropSuggestions = () => (
+        <div
+            style={cropStyle}
+        >
+        </div>
+    );
 
     // Set up crop area when media dimensions change
     useEffect(() => {
@@ -158,7 +206,7 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
                 setCropClientDimensions({
                     width: imageRef.current.clientWidth,
                     height: imageRef.current.clientHeight,
-                })
+                });
             } else if (isEditorVideoElement(element) && videoRef.current) {
                 console.log("videoRef.current: ", {
                     videoWidth: videoRef.current.videoWidth,
@@ -173,7 +221,7 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
                 setCropClientDimensions({
                     width: videoRef.current.clientWidth,
                     height: videoRef.current.clientHeight,
-                })
+                });
             }
         };
 
@@ -195,6 +243,49 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
         }
     }, [element]);
 
+    async function autoCrop() {
+        if (!isEditorVideoElement(element)) return;
+        setIsLoading(true);
+        console.log("Loading...");
+
+        try {
+            const videoFile = document.getElementById(element.properties.elementId) as HTMLVideoElement;
+            if (videoFile && videoFile.src) {
+                const timeStart = element.timeFrame.relativeStart;
+                const timeEnd = element.timeFrame.relativeStart + (element.timeFrame.end-element.timeFrame.start);
+                const response = await fetch(videoFile.src);
+                const blob = await response.blob();
+                const formData = new FormData();
+                formData.append("file", blob, "video.mp4");
+
+                const apiResponse = await fetch(API_ENDPOINT, {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (apiResponse.ok) {
+                    const data = await apiResponse.json();
+                    setCropSuggestions(data);
+                    element.properties.customCrop = data;
+                    console.log("API Response:", data);
+                } else {
+                    console.error("Error fetching crop suggestions:", await apiResponse.text());
+                }
+            }
+        } catch (error) {
+            console.error("API Request Error:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    function manualCrop(): void {
+        // Reset the crop value 
+        if (!isEditorVideoElement(element)) return;
+        element.properties.customCrop = [];
+        setCropSuggestions([]);
+    }
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div
@@ -205,60 +296,90 @@ const ReframeModal: React.FC<ReframeModalProps> = ({ onClose, element }) => {
             <div className="bg-white rounded-lg shadow-lg p-6 relative">
                 <h2 className="text-xl font-semibold mb-4">Reframe</h2>
 
-                <div className="mb-4">
-                    <label htmlFor="format" className="block text-sm font-medium text-gray-700">
-                        Format
-                    </label>
-                    <select
-                        id="format"
-                        value={selectedFormat}
-                        onChange={(e) => {
-                            setSelectedFormat(e.target.value);
-                            updateAspectToFormat(e.target.value); // Update crop when format changes
-                        }}
-                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    >
-                        <option value="3:4">3:4</option>
-                        <option value="16:9">16:9</option>
-                        <option value="9:16">9:16</option>
-                        <option value="1:1">1:1</option>
-                    </select>
-                </div>
+                <div id="2columns-container" className="grid grid-cols-2 gap-4 mb-4">
+                    <div id="column-1">
 
-                <div className="w-2/3">
-                    <div className="relative border border-gray-300 rounded-lg overflow-hidden" style={{ width: '444px', height: '799.2px' }}>
-                        {isEditorImageElement(element) && (
-                            <ReactCrop
-                                crop={crop}
-                                onChange={(_, percentCrop) => setCrop(percentCrop)}
-                                onComplete={(c) => setCompletedCrop(c)}
-                                aspect={aspect}
-                                keepSelection
+                        <div className="mb-4">
+                            <label htmlFor="format" className="block text-sm font-medium text-gray-700">
+                                Format
+                            </label>
+                            <select
+                                id="format"
+                                value={selectedFormat}
+                                onChange={(e) => {
+                                    setSelectedFormat(e.target.value);
+                                    updateAspectToFormat(e.target.value); // Update crop when format changes
+                                }}
+                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                             >
-                                <img
-                                    ref={imageRef}
-                                    alt={element.name}
-                                    src={element.properties.src}
-                                    style={{ width: "100%", height: "100%" }}
-                                />
-                            </ReactCrop>
-                        )}
-                        {isEditorVideoElement(element) && (
-                            <ReactCrop
-                                crop={crop}
-                                onChange={(_, percentCrop) => setCrop(percentCrop)}
-                                onComplete={(c) => setCompletedCrop(c)}
-                                aspect={aspect}
-                                keepSelection
-                            >
-                                <video
-                                    ref={videoRef}
-                                    src={element.properties.src}
-                                    style={{ width: "100%", height: "100%" }}
-                                    controls
-                                />
-                            </ReactCrop>
-                        )}
+                                <option value="3:4">3:4</option>
+                                <option value="16:9">16:9</option>
+                                <option value="9:16">9:16</option>
+                                <option value="1:1">1:1</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="mode" className="block text-sm font-medium text-gray-700">
+                                Mode
+                            </label>
+                            <button className="mt-1 block w-full pl-3 pr-10 py-2 text-base text-left rounded-md bg-gray-100" 
+                                style={{ backgroundColor: '#dde4e9' }}
+                                onClick={manualCrop}>
+                                Recadrage manuel (par défaut)
+                            </button>
+                            <button className="mt-1 block w-full pl-3 pr-10 py-2 text-base text-left rounded-md bg-gray-100"
+                                style={{ backgroundColor: '#dde4e9' }}
+                                onClick={autoCrop}>
+                                Recadrage automatique
+                            </button>
+
+                        </div>
+                    </div>
+
+                    <div id="column-2">
+                        <div className="relative border border-gray-300 rounded-lg overflow-hidden" style={{ width: '600px', height: '400px' }}>
+                            {isEditorImageElement(element) && !isLoading && (
+                                <ReactCrop
+                                    crop={crop}
+                                    onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                    onComplete={(c) => setCompletedCrop(c)}
+                                    aspect={aspect}
+                                    keepSelection
+                                >
+                                    <img
+                                        ref={imageRef}
+                                        alt={element.name}
+                                        src={element.properties.src}
+                                        style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain' }}
+                                    />
+                                </ReactCrop>
+                            )}
+                            {isEditorVideoElement(element) && (
+                                <div>
+                                    <ReactCrop
+                                        crop={crop}
+                                        onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                        onComplete={(c) => setCompletedCrop(c)}
+                                        aspect={aspect}
+                                        keepSelection
+                                    >
+                                        <video
+                                            ref={videoRef}
+                                            src={element.properties.src}
+                                            style={{ width: "100%", height: "100%" }}
+                                            controls
+                                        />
+                                    </ReactCrop>
+                                    {/* Display crop suggestions as overlays */}
+                                    {!isLoading && cropSuggestions.length > 0 && <CropSuggestions />}
+                                    {isLoading && (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="spinner" />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
